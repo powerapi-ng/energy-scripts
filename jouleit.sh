@@ -10,7 +10,7 @@ while getopts "n:s:bo:lca" o; do
         allsockets="True"
         ;;
     b)
-        mode="binarry"
+        mode="binary"
         ;;
     c)
         mode="csv"
@@ -26,8 +26,9 @@ while getopts "n:s:bo:lca" o; do
         iterations=${OPTARG}
         ;;
     o)
-        output="True"
         outputfile=${OPTARG}
+        ;;
+    *)
         ;;
     esac
 
@@ -37,35 +38,33 @@ shift $((OPTIND - 1))
 
 # Read data
 read_energy() {
-
     socket=$1
-    components=$(find /sys/devices/virtual/powercap/intel-rapl/intel-rapl:$socket* -name "energy_uj")
+    components=$(find "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:$socket*" -name "energy_uj")
 
     data=""
     for component in ${components[@]}; do
 
-        name=$(cat ${component%energy_uj}/name)
-        energy=$(cat $component)
+        name=$(cat "${component%energy_uj}/name")
+        energy=$(cat "$component")
         data=$data$component,$name,$energy\;
     done
     timestamp=$(date +"%s%6N")
     data="global:/,duration,$timestamp;${data%;}"
-    echo $data
+    echo "$data"
 }
 
 read_maxenergy() {
     socket=$1
-    components=$(find /sys/devices/virtual/powercap/intel-rapl/intel-rapl:$socket* -name "energy_uj")
+    components=$(find "/sys/devices/virtual/powercap/intel-rapl/intel-rapl:$socket*" -name "energy_uj")
 
     data=""
     for component in ${components[@]}; do
-
-        name=$(cat ${component%energy_uj}/name)
-        energy=$(cat ${component%energy_uj}/max_energy_range_uj)
+        name=$(cat "${component%energy_uj}/name")
+        energy=$(cat "${component%energy_uj}/max_energy_range_uj")
         data=$data$component,$name,$energy\;
     done
     data="global:/,duration,0;${data%;}"
-    echo $data
+    echo "$data"
 }
 
 # Calculate the energyies
@@ -74,7 +73,7 @@ calculate_energy() {
     begins=$1
     ends=$2
     maxenergies=$3
-    energies=$(echo | awk -v begins=$begins -v ends=$ends -v maxenergies=$maxenergies 'BEGIN \
+    energies=$(echo | awk -v begins="$begins" -v ends="$ends" -v maxenergies="$maxenergies" 'BEGIN \
     {
     split(ends,ends1,";");
     split(begins,begins1,";");
@@ -110,8 +109,8 @@ calculate_energy() {
 
     }')
     energies="${energies%;}"
-    energies=$(echo $energies | sed -r 's/package-([0-9]+)/cpu/g')
-    echo $energies
+    energies=$(echo "$energies" | sed -r 's/package-([0-9]+)/cpu/g')
+    echo "$energies"
 
 }
 
@@ -119,8 +118,8 @@ calculate_energy() {
 
 list_domains() {
     dt=$1
-    dt=$(echo $dt | sed -r 's/package-([0-9]+)/cpu/g')
-    domains=$(echo | awk -v data=$dt 'BEGIN \
+    dt=$(echo "$dt" | sed -r 's/package-([0-9]+)/cpu/g')
+    domains=$(echo | awk -v data="$dt" 'BEGIN \
     {
         split(data,data1,";");
         asort(data1)
@@ -134,7 +133,7 @@ list_domains() {
             split(cpu,cpu1,"/")
             cpu=cpu1[1]
             energies[name,cpu]=value
-           
+
         }
         asorti(energies,indices )
          for (i in indices ) {
@@ -143,15 +142,15 @@ list_domains() {
 
     }')
     domains="${domains%;}"
-    echo $domains
+    echo "$domais"
 }
 
 list_global_domains() {
     dt=$1
-    dt=$(echo $dt | sed -r 's/package-([0-9]+)/cpu/g')
-    domains=$(echo | awk -v data=$dt 'BEGIN \
+    dt=$(echo "$dt" | sed -r 's/package-([0-9]+)/cpu/g')
+    domains=$(echo | awk -v data="$dt" 'BEGIN \
     {
-        
+
         split(data,data1,";");
         for (line in data1 )  {
             split(data1[line],line1,",");
@@ -164,14 +163,14 @@ list_global_domains() {
             cpu=cpu1[1]
             energies[name]=energies[name]+value
         }
-        
+
         asorti(energies,indices )
          for (i in indices ) {
            printf toupper(indices[i])";"
         }
     }')
     domains="${domains%;}"
-    echo $domains
+    echo "$domains"
 }
 
 ########################################################################
@@ -183,7 +182,7 @@ print_time() {
     echo " ----------------------------------------------"
     echo "|               execution time  (s)            |"
     echo " ----------------------------------------------"
-    echo $duration | awk '{printf "|               %-30.3f |\n",$0/1000000}'
+    echo "$duration" | awk '{printf "|               %-30.3f |\n",$0/1000000}'
     echo " ---------------------------------------------- "
 
 }
@@ -195,8 +194,7 @@ print_header() {
 }
 
 print_details() {
-
-    echo | awk -v data=$1 'BEGIN \
+    echo | awk -v data="$1" 'BEGIN \
     {
         split(data,data1,";");
         asort(data1)
@@ -221,8 +219,7 @@ print_details() {
 
 ##############################################################
 
-print_binarry() {
-
+print_binary() {
     energies=$(echo | awk -v data=$1 'BEGIN \
     {
         split(data,data1,";");
@@ -237,21 +234,20 @@ print_binarry() {
             split(cpu,cpu1,"/")
             cpu=cpu1[1]
             energies[name,cpu]=value
-           
+
         }
         asorti(energies,indices )
          for (i in indices ) {
-        
+
            printf toupper(indices[i])";"energies[indices[i]]";"
         }
-        
+
     }')
     energies="${energies%;}"
-    echo $energies
+    echo "$energies"
 }
 
 print_append_csv() {
-
     energies=$(echo | awk -v data=$1 'BEGIN \
     {
         split(data,data1,";");
@@ -266,25 +262,24 @@ print_append_csv() {
             split(cpu,cpu1,"/")
             cpu=cpu1[1]
             energies[name,cpu]=value
-           
+
         }
         asorti(energies,indices )
          for (i in indices ) {
-        
+
            printf energies[indices[i]]";"
         }
-        
+
     }')
     energies="${energies%;}"
-    echo $energies
+    echo "$energies"
 }
 
 ###############################################
 calculate_global() {
-
-    echo | awk -v data=$1 'BEGIN \
+    echo | awk -v data="$1" 'BEGIN \
     {
-        
+
         split(data,data1,";");
         for (line in data1 )  {
             split(data1[line],line1,",");
@@ -297,13 +292,13 @@ calculate_global() {
             cpu=cpu1[1]
             energies[name]=energies[name]+value
         }
-        
+
        asorti(energies,indices )
          for (i in indices ) {
-             
+
            printf "global:/,"toupper(indices[i])","energies[indices[i]]";"
         }
-    
+
     }'
 
 }
@@ -312,20 +307,20 @@ show_pretty() {
     energies=$1
     duration=${energies#*duration,}
     duration=${duration%%;*}
-    print_time $duration
+    print_time "$duration"
     print_header
-    print_details $energies
+    print_details "$energies"
 }
 
 ####################################
 get_raw_energy() {
-    begin_energy=$(read_energy $socket)
+    begin_energy=$(read_energy "$socket")
     # beginT=$(date +"%s%N")
 
     ###############################################
     if [ -n "$outputfile" ]; then
 
-        $@ 2>&1 >>$outputfile
+        $@ 2>&1 >> "$outputfile"
         exit_code=$?
     else
         $@
@@ -333,15 +328,15 @@ get_raw_energy() {
     fi
     ###############################################
 
-    end_energy=$(read_energy $socket)
+    end_energy=$(read_energy "$socket")
 
     ### Calculate the energies
 
-    energies=$(calculate_energy $begin_energy $end_energy $maxenergies)
+    energies=$(calculate_energy "$begin_energy" "$end_energy" "$maxenergies")
     energies="${energies%;}"
-    energies=$(echo $energies | sed -r 's/package-([0-9]+)/cpu/g')
+    energies=$(echo "$energies" | sed -r 's/package-([0-9]+)/cpu/g')
 
-    global_energies=$(calculate_global $energies)
+    global_energies=$(calculate_global "$energies")
     global_energies="${global_energies%;}"
 
     if [ -n "$allsockets" ] || [ -n "$socket" ]; then
@@ -352,7 +347,7 @@ get_raw_energy() {
 
     results=$results";global:/,exit_code,"$exit_code
     ## Visualisation
-    echo $results
+    echo "$results"
     return $exit_code
 }
 
@@ -360,12 +355,12 @@ bulk() {
     filename=data$(date +%s).csv
     iterations=$((iterations - 1))
     header='iteration;'$(header_csv)
-    echo $header >$filename
+    echo "$header" > "$filename"
 
     for i in $(seq 0 1 $iterations); do
         results=$(get_raw_energy $@)
-        x=$i";"$(print_append_csv $results)
-        echo $x >>$filename
+        x=$i";"$(print_append_csv "$results")
+        echo "$x" >> "$filename"
     done
     echo "The data is stored in the file $filename"
 
@@ -375,14 +370,14 @@ bulk() {
 
 main() {
     case "${mode}" in
-    binarry)
+    binary)
         results=$(get_raw_energy $@)
-        print_binarry $results
+        print_binary "$results"
         exit_code=$?
         ;;
     csv)
         results=$(get_raw_energy $@)
-        print_append_csv $results
+        print_append_csv "$results"
         exit_code=$?
         ;;
     repeat)
@@ -390,7 +385,7 @@ main() {
         ;;
     *)
         results=$(get_raw_energy $@)
-        show_pretty $results
+        show_pretty "$results"
         exit_code=$?
         ;;
     esac
@@ -400,22 +395,21 @@ main() {
 }
 
 header_csv() {
-    maxenergies=$(echo $maxenergies | sed -r 's/package-([0-9]+)/cpu/g')
+    maxenergies=$(echo "$maxenergies" | sed -r 's/package-([0-9]+)/cpu/g')
     if [ -n "$allsockets" ]; then
-        s=$(list_domains $maxenergies)
+        s=$(list_domains "$maxenergies")
     else
-        s=$(list_global_domains $maxenergies)
+        s=$(list_global_domains "$maxenergies")
     fi
-    echo $s";EXIT_CODE"
+    echo "$s;EXIT_CODE"
 }
 
 ###############################
-maxenergies=$(read_maxenergy $socket)
+maxenergies=$(read_maxenergy "$socket")
 
 if [ -n "$list_dom" ]; then
     header_csv
 else
-
     main $@
     exit_code=$?
 fi
